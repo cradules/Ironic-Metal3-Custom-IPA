@@ -33,19 +33,25 @@ class NetworkConfigurator:
         try:
             # Create mount point
             os.makedirs(self.config_drive_path, exist_ok=True)
-            
+
+            # Check if already mounted
+            result = subprocess.run(['mount'], capture_output=True, text=True)
+            if self.config_drive_path in result.stdout:
+                logger.info(f"Config drive already mounted at {self.config_drive_path}")
+                return True
+
             # Try to mount config drive
             result = subprocess.run([
                 'mount', '/dev/sr0', self.config_drive_path
             ], capture_output=True, text=True)
-            
+
             if result.returncode == 0:
                 logger.info(f"Successfully mounted config drive to {self.config_drive_path}")
                 return True
             else:
                 logger.error(f"Failed to mount config drive: {result.stderr}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Exception mounting config drive: {e}")
             return False
@@ -273,10 +279,13 @@ def main():
     
     configurator = NetworkConfigurator()
     
-    # Mount config drive
-    if not configurator.mount_config_drive():
-        logger.error("Failed to mount config drive")
-        sys.exit(1)
+    # Try to mount config drive if not already mounted
+    if not os.path.exists(configurator.config_drive_path) or not os.listdir(configurator.config_drive_path):
+        if not configurator.mount_config_drive():
+            logger.error("Failed to mount config drive")
+            sys.exit(1)
+    else:
+        logger.info(f"Config drive already mounted at {configurator.config_drive_path}")
     
     # Load network data
     if not configurator.load_network_data():

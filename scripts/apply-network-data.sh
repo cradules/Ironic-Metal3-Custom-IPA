@@ -15,13 +15,38 @@ echo "$(date): Starting IPA network configuration"
 echo "$(date): Waiting for network devices to be ready..."
 sleep 5
 
-# Check if config drive exists
-if [ ! -b "/dev/sr0" ]; then
-    echo "$(date): ERROR: Config drive /dev/sr0 not found"
+# Find config drive - try multiple possible locations
+CONFIG_DRIVE=""
+for device in /dev/sr0 /dev/sr1 /dev/cdrom /dev/dvd; do
+    if [ -b "$device" ]; then
+        echo "$(date): Found potential config drive at $device"
+        CONFIG_DRIVE="$device"
+        break
+    fi
+done
+
+if [ -z "$CONFIG_DRIVE" ]; then
+    echo "$(date): ERROR: No config drive found. Available block devices:"
+    ls -la /dev/sr* /dev/cd* /dev/dvd* 2>/dev/null || echo "No optical devices found"
+    echo "$(date): All block devices:"
+    lsblk
     exit 1
 fi
 
-echo "$(date): Config drive found at /dev/sr0"
+echo "$(date): Using config drive at $CONFIG_DRIVE"
+
+# Mount the config drive (if not already mounted)
+MOUNT_POINT="/mnt/config"
+mkdir -p "$MOUNT_POINT"
+
+if mount | grep -q "$MOUNT_POINT"; then
+    echo "$(date): Config drive already mounted at $MOUNT_POINT"
+elif mount "$CONFIG_DRIVE" "$MOUNT_POINT"; then
+    echo "$(date): Config drive mounted at $MOUNT_POINT"
+else
+    echo "$(date): ERROR: Failed to mount config drive $CONFIG_DRIVE"
+    exit 1
+fi
 
 # Run the Python network configuration script
 echo "$(date): Running network configuration script"
