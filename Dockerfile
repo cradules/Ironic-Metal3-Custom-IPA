@@ -1,6 +1,6 @@
 # Custom IPA Image with Network Configuration Support
 # Downloads the same IPA images that ironic-ipa-downloader uses and modifies them
-FROM centos:stream9
+FROM quay.io/centos/centos:stream9
 
 # Install required packages for building
 RUN dnf update -y && \
