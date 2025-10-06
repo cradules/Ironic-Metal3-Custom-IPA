@@ -1,55 +1,61 @@
 # Custom IPA Image with Network Configuration Support
-# Based on the official Metal3 IPA image
-FROM quay.io/metal3-io/ironic-python-agent:latest
+# Downloads the same IPA images that ironic-ipa-downloader uses and modifies them
+FROM centos:stream9
 
-# Install additional packages for network configuration
-USER root
-
-# Install network configuration tools and bonding support
+# Install required packages for building
 RUN dnf update -y && \
     dnf install -y \
-        python3-pip \
-        python3-yaml \
-        python3-requests \
-        iproute \
-        bridge-utils \
-        net-tools \
-        iputils \
-        bind-utils \
-        jq \
-        ethtool \
-        ifenslave && \
+        curl \
+        tar \
+        gzip \
+        cpio \
+        file \
+        findutils && \
     dnf clean all
 
-# Install Python packages for network configuration
-RUN pip3 install --no-cache-dir \
-    pyyaml \
-    requests \
-    netifaces
+# Create directories for IPA files
+RUN mkdir -p /usr/share/ironic-python-agent
 
-# Load bonding kernel module
-RUN echo "bonding" >> /etc/modules-load.d/bonding.conf
+# Download the exact same IPA images that ironic-ipa-downloader uses
+# This matches: https://tarballs.opendev.org/openstack/ironic-python-agent/dib/ipa-centos9-master.tar.gz
+RUN curl -L -o /tmp/ipa.tar.gz "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/ipa-centos9-master.tar.gz" && \
+    cd /tmp && \
+    tar -xzf ipa.tar.gz && \
+    cp ipa.kernel /usr/share/ironic-python-agent/kernel && \
+    cp ipa.initramfs /tmp/ipa-original.initramfs
 
-# Copy custom network configuration scripts
-COPY scripts/network-config.py /usr/local/bin/network-config.py
-COPY scripts/apply-network-data.sh /usr/local/bin/apply-network-data.sh
-COPY scripts/ipa-network-init.service /etc/systemd/system/ipa-network-init.service
+# Extract the original initramfs to modify it
+RUN mkdir -p /tmp/ipa-extract && \
+    cd /tmp/ipa-extract && \
+    zcat /tmp/ipa-original.initramfs | cpio -idmv
 
-# Make scripts executable
-RUN chmod +x /usr/local/bin/network-config.py && \
-    chmod +x /usr/local/bin/apply-network-data.sh && \
-    chmod 644 /etc/systemd/system/ipa-network-init.service
+# Copy custom network configuration scripts into the extracted initramfs
+COPY scripts/network-config.py /tmp/ipa-extract/usr/local/bin/network-config.py
+COPY scripts/apply-network-data.sh /tmp/ipa-extract/usr/local/bin/apply-network-data.sh
+COPY scripts/ipa-network-init.service /tmp/ipa-extract/etc/systemd/system/ipa-network-init.service
+
+# Make scripts executable and set proper permissions
+RUN chmod +x /tmp/ipa-extract/usr/local/bin/network-config.py && \
+    chmod +x /tmp/ipa-extract/usr/local/bin/apply-network-data.sh && \
+    chmod 644 /tmp/ipa-extract/etc/systemd/system/ipa-network-init.service
+
+# Add bonding module configuration
+RUN mkdir -p /tmp/ipa-extract/etc/modules-load.d && \
+    echo "bonding" >> /tmp/ipa-extract/etc/modules-load.d/bonding.conf
 
 # Enable the network initialization service
-RUN systemctl enable ipa-network-init.service
+RUN ln -sf /etc/systemd/system/ipa-network-init.service \
+    /tmp/ipa-extract/etc/systemd/system/multi-user.target.wants/ipa-network-init.service
 
-# Switch back to IPA user
-USER ironic
+# Repack the modified initramfs
+RUN cd /tmp/ipa-extract && \
+    find . | cpio -o -H newc | gzip > /usr/share/ironic-python-agent/ramdisk
 
-# Set environment variables for custom network configuration
-ENV IPA_ENABLE_CUSTOM_NETWORK=true
-ENV IPA_CONFIG_DRIVE_MOUNT=/mnt/config
-ENV IPA_NETWORK_DATA_PATH=/mnt/config/openstack/latest/network_data.json
+# Clean up temporary files
+RUN rm -rf /tmp/ipa.tar.gz /tmp/ipa-extract /tmp/ipa-original.initramfs /tmp/ipa.kernel /tmp/ipa.initramfs
 
-# Keep the original IPA entrypoint
-ENTRYPOINT ["/usr/local/bin/ironic-python-agent"]
+# Set working directory
+WORKDIR /
+
+# This container is used to extract the modified IPA kernel and ramdisk
+CMD ["echo", "Custom IPA images ready for extraction"]
