@@ -21,8 +21,8 @@ RUN mkdir -p /usr/share/ironic-python-agent
 RUN curl -L -o /tmp/ipa.tar.gz "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/ipa-centos9-master.tar.gz" && \
     cd /tmp && \
     tar -xzf ipa.tar.gz && \
-    cp ipa.kernel /usr/share/ironic-python-agent/kernel && \
-    cp ipa.initramfs /tmp/ipa-original.initramfs
+    cp ipa-centos9-master.kernel /usr/share/ironic-python-agent/kernel && \
+    cp ipa-centos9-master.initramfs /tmp/ipa-original.initramfs
 
 # Extract the original initramfs to modify it
 RUN mkdir -p /tmp/ipa-extract && \
@@ -52,7 +52,7 @@ RUN cd /tmp/ipa-extract && \
     find . | cpio -o -H newc | gzip > /usr/share/ironic-python-agent/ramdisk
 
 # Clean up temporary files
-RUN rm -rf /tmp/ipa.tar.gz /tmp/ipa-extract /tmp/ipa-original.initramfs /tmp/ipa.kernel /tmp/ipa.initramfs
+RUN rm -rf /tmp/ipa.tar.gz /tmp/ipa-extract /tmp/ipa-original.initramfs /tmp/ipa-centos9-master.kernel /tmp/ipa-centos9-master.initramfs
 
 # Set working directory
 WORKDIR /
