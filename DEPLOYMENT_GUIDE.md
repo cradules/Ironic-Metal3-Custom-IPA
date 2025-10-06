@@ -13,10 +13,19 @@ Before starting, ensure you have:
 
 ## Quick Deployment (Automated)
 
-The easiest way to deploy is using the automated script:
+### Option 1: Integrated with Ironic Deployment (Recommended)
+
+If you're using the integrated approach, the custom IPA is automatically built and deployed when your Ironic server is created via Terraform user data. No manual steps needed!
+
+### Option 2: Manual Deployment
+
+If you need to deploy manually or update an existing Ironic server:
 
 ```bash
-cd 2-cluster-api/ironic/custom-ipa
+# Download and deploy custom IPA
+cd /tmp
+curl -L https://github.com/cradules/Ironic-Metal3-Custom-IPA/archive/main.tar.gz | tar -xz
+cd Ironic-Metal3-Custom-IPA-main
 chmod +x deploy.sh
 ./deploy.sh
 ```
