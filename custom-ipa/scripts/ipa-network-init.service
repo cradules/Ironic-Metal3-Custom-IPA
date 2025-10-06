@@ -1,0 +1,18 @@
+[Unit]
+Description=IPA Custom Network Configuration
+After=systemd-udev-settle.service systemd-modules-load.service
+Before=ironic-python-agent.service network.target
+Wants=systemd-udev-settle.service systemd-modules-load.service
+DefaultDependencies=false
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/apply-network-data.sh
+RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=300
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+[Install]
+WantedBy=multi-user.target
