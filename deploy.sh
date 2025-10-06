@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IRONIC_DIR="$(dirname "$SCRIPT_DIR")"
 IMAGE_NAME="custom-ipa-network:latest"
 OUTPUT_DIR="$SCRIPT_DIR/output"
-IRONIC_IMAGES_DIR="/opt/ironic/data/html/images"
+IRONIC_IMAGES_DIR="/var/lib/docker/volumes/scripts_ironic-data/_data/html/images"
 
 # Colors for output
 RED='\033[0;31m'
