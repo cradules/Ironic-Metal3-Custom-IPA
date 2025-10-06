@@ -4,7 +4,7 @@ FROM quay.io/centos/centos:stream9
 
 # Install required packages for building
 RUN dnf update -y && \
-    dnf install -y \
+    dnf install -y --allowerasing \
         curl \
         tar \
         gzip \
